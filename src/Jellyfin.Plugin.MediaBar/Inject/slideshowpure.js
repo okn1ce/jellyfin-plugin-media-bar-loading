@@ -3,7 +3,6 @@
     let isTransitioning = false;
     const listFileName = `${window.location.origin}/web/avatars/list.txt`;
     const jsonCredentials = sessionStorage.getItem("json-credentials");
-    const apiKey = sessionStorage.getItem("api-key");
     let userId = null;
     let token = null;
     const deviceId = localStorage.getItem("_deviceId2");
@@ -169,13 +168,55 @@
         const playButton = document.createElement("button");
         playButton.className = "play-button";
         playButton.innerHTML = `
-      <span class="play-icon"><i class="material-icons info_outline"></i></span>
-      <span class="play-text">Details</span>
+      <span class="play-icon"><i class="material-icons play_circle_outline"></i></span>
+      <span class="play-text">Play Now</span>
     `;
-        playButton.onclick = () => {
+        playButton.onclick = async () => {
+            if (!window.ApiClient) {
+                console.error("Jellyfin API client is not available.");
+                return;
+            }
+            const apiClient = window.ApiClient;
+            const userId = apiClient.getCurrentUserId();
+            if (!userId) {
+                console.error("User not found.");
+                return;
+            }
+            try {
+                const sessions = await apiClient.getJSON(
+                    apiClient.serverAddress() + "/Sessions"
+                );
+                if (!sessions.length) {
+                    console.error("No active Jellyfin sessions found.");
+                    return;
+                }
+                const sessionId = sessions[0].Id;
+                const playbackUrl = `${apiClient.serverAddress()}/Sessions/${sessionId}/Playing?StartPositionTicks=0&PlayCommand=PlayNow&StartIndex=0&ItemIds=${itemId}&api_key=${token}`;
+                const response = await fetch(playbackUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDevice", DeviceId="YourDeviceId", Version="YourVersion", Token="${token}"`,
+                    },
+                });
+                if (response.status === 204) {
+                    console.log("Playback started successfully.");
+                } else {
+                    const errorData = await response.json();
+                    console.error("Failed to start playback:", errorData);
+                }
+            } catch (error) {
+                console.error("Error fetching sessions:", error);
+            }
+        };
+        const detailButton = document.createElement("button");
+        detailButton.className = "detail-button";
+        detailButton.innerHTML = `
+      <span class="detail-icon"><i class="material-icons info_outline"></i></span>
+      <span class="detail-text">More Details</span>
+    `;
+        detailButton.onclick = () => {
             window.top.location.href = `/#!/details?id=${itemId}`;
-            //window.location.href = `/Videos/${itemId}/stream.mp4?Static=true&mediaSourceId=${itemId}&deviceId=${deviceId}&api_key=${apiKey}`;
-            //window.top.location.href = streamUrl;
         };
         slide.append(
             logoContainer,
@@ -185,7 +226,8 @@
             plotContainer,
             infoContainer,
             genreElement,
-            playButton
+            playButton,
+            detailButton
         );
         return slide;
     };
@@ -315,14 +357,13 @@
         let focusedSlide = null;
         let containerFocused = !1;
         const updateCurrentSlide = (index) => {
-            if (isTransitioning) return; // Skip if already transitioning
-            isTransitioning = true; // Set transitioning to true at the start
+            if (isTransitioning) return;
+            isTransitioning = true;
             currentSlideIndex = (index + slides.length) % slides.length;
             showSlide(currentSlideIndex);
-            // Re-enable arrows after a short delay to prevent rapid clicking
             setTimeout(() => {
-                isTransitioning = false; // Reset after transition completes
-            }, 500); // Adjust the delay as needed (500ms is a reasonable starting point)
+                isTransitioning = false;
+            }, 500);
         };
         const openActiveSlide = () => {
             if (focusedSlide) {
@@ -373,7 +414,6 @@
                 }
             }
         });
-
         const leftArrow = document.createElement("div");
         const rightArrow = document.createElement("div");
         leftArrow.classList.add("arrow", "left-arrow");
@@ -420,7 +460,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (homeButton) {
             event.preventDefault();
             window.location.href = "/web/index.html#/home.html";
-            setTimeout(handleHomeNavigation, 300); // Delay for UI update
+            setTimeout(handleHomeNavigation, 300);
         }
     });
 });

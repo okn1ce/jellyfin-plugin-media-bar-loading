@@ -1,5 +1,4 @@
-﻿
-function saveCredentialsToSessionStorage(credentials) {
+﻿function saveCredentialsToSessionStorage(credentials) {
     try {
         sessionStorage.setItem(
             "json-credentials",
