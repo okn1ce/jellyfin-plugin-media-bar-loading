@@ -1,4 +1,6 @@
-# Jellyfin-Media-Bar
+# Jellyfin-Media-Bar - Now with Play Now Function
+
+## TODO - Design changes upcoming next release
 
 Thanks to the Man, the Legend [BobHasNoSoul](https://github.com/BobHasNoSoul) for his work on the [jellyfinfeatured](https://github.com/BobHasNoSoul/jellyfin-featured) and [SethBacon](https://forum.jellyfin.org/u-sethbacon) and [TedHinklater](https://github.com/tedhinklater) for their take on the [Jellyfin-Featured-Content-Bar](https://github.com/tedhinklater/Jellyfin-Featured-Content-Bar). 
 
