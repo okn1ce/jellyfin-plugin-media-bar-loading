@@ -30,6 +30,10 @@
       <EmbeddedResource Include="Inject\slideshowpure.js" />
     </ItemGroup>
 
+    <ItemGroup>
+        <None Include="..\..\README.md" />
+    </ItemGroup>
+    
     <Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="Exists('C:\ProgramData\Jellyfin\Server\plugins\MediaBar')">
         <Exec Command="xcopy $(OutDir) &quot;C:\ProgramData\Jellyfin\Server\plugins\MediaBar&quot; /y" />
     </Target>

@@ -1,10 +1,8 @@
 # Jellyfin-Media-Bar - Now with Play Now Function
 
-This plugin uses <img alt="JF Referenceable" src="https://img.shields.io/badge/JF%20Referenceable-v1.2.2-blue" />
-
 1. Add `https://www.iamparadox.dev/jellyfin/plugins/manifest.json` to your repositories
-2. Install "File Transformation" 1.2.2
-3. Install "Media Bar" 1.0.1
+2. Install "File Transformation" 2.0.0
+3. Install "Media Bar" 2.0.0
 4. Restart Jellyfin
 
 <details>
