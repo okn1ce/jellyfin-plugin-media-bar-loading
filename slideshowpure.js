@@ -5,8 +5,8 @@ const slidesInit = () => {
   const jsonCredentials = sessionStorage.getItem("json-credentials");
   let userId = null;
   let token = null;
-  const deviceId = localStorage.getItem("_deviceId2");
-  console.log(deviceId);
+  //const deviceId = localStorage.getItem("_deviceId2");
+  //console.log(deviceId);
   if (jsonCredentials) {
     const credentials = JSON.parse(jsonCredentials);
     userId = credentials.Servers[0].UserId;
@@ -165,59 +165,78 @@ const slidesInit = () => {
     const infoContainer = document.createElement("div");
     infoContainer.className = "info-container";
     infoContainer.appendChild(ratingTest);
+    // Create a container for the buttons
+    const buttonContainer = document.createElement("div");
+    buttonContainer.className = "button-container"; // Add a class for styling
+
+    // Create the Play button
     const playButton = document.createElement("button");
     playButton.className = "play-button";
     playButton.innerHTML = `
-      <span class="play-icon"><i class="material-icons play_circle_outline"></i></span>
-      <span class="play-text">Play Now</span>
-    `;
+  <span class="play-icon"><i class="material-icons play_circle_outline"></i></span>
+  <span class="play-text">Play</span>
+`;
     playButton.onclick = async () => {
+      if (!window.PlaybackManager) {
+        console.error("PlaybackManager is not available.");
+        return;
+      }
+
       if (!window.ApiClient) {
         console.error("Jellyfin API client is not available.");
         return;
       }
+
       const apiClient = window.ApiClient;
       const userId = apiClient.getCurrentUserId();
+
       if (!userId) {
         console.error("User not found.");
         return;
       }
+
       try {
-        const sessions = await apiClient.getJSON(
-          apiClient.serverAddress() + "/Sessions"
-        );
-        if (!sessions.length) {
-          console.error("No active Jellyfin sessions found.");
+        // Fetch the media item details
+        const item = await apiClient.getItem(userId, itemId);
+        if (!item) {
+          console.error("Media item not found.");
           return;
         }
-        const sessionId = sessions[0].Id;
-        const playbackUrl = `${apiClient.serverAddress()}/Sessions/${sessionId}/Playing?StartPositionTicks=0&PlayCommand=PlayNow&StartIndex=0&ItemIds=${itemId}&api_key=${token}`;
-        const response = await fetch(playbackUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDevice", DeviceId="YourDeviceId", Version="YourVersion", Token="${token}"`,
-          },
-        });
-        if (response.status === 204) {
-          console.log("Playback started successfully.");
-        } else {
-          const errorData = await response.json();
-          console.error("Failed to start playback:", errorData);
-        }
+
+        // Initiate playback using PlaybackManager
+        window.PlaybackManager.play({
+          items: [item],
+          startPositionTicks: 0, // Start from beginning
+          isMuted: false,
+          isPaused: false,
+        })
+          .then(() => {
+            console.log("Playback started successfully.");
+          })
+          .catch((error) => {
+            console.error("Failed to start playback:", error);
+          });
       } catch (error) {
-        console.error("Error fetching sessions:", error);
+        console.error("Error starting playback:", error);
       }
     };
+
+    // Create the Details button
     const detailButton = document.createElement("button");
     detailButton.className = "detail-button";
     detailButton.innerHTML = `
-      <span class="detail-icon"><i class="material-icons info_outline"></i></span>
-      <span class="detail-text">More Details</span>
-    `;
+  <span class="detail-icon"><i class="material-icons info_outline"></i></span>
+  <span class="detail-text">Info</span>
+`;
     detailButton.onclick = () => {
       window.top.location.href = `/#!/details?id=${itemId}`;
     };
+
+    // Append buttons to the button container
+    buttonContainer.appendChild(playButton);
+    buttonContainer.appendChild(detailButton);
+
+    // Append all elements to the slide
     slide.append(
       logoContainer,
       backdropContainer,
@@ -226,9 +245,9 @@ const slidesInit = () => {
       plotContainer,
       infoContainer,
       genreElement,
-      playButton,
-      detailButton
+      buttonContainer
     );
+
     return slide;
   };
   const createSlideForItem = async (item, title) => {
