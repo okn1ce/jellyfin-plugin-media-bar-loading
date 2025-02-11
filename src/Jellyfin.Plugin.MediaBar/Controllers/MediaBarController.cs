@@ -53,5 +53,16 @@ namespace Jellyfin.Plugin.MediaBar.Controllers
         
             return Content(regex, "text/html");
         }
+
+        [HttpPost("Patch/MainJellyfinBundle")]
+        public ActionResult PatchMainBundle([FromBody] PatchRequestPayload payload)
+        {
+            string replacementText =
+                "window.PlaybackManager=this.playbackManager;console.log(\"PlaybackManager is now globally available:\",window.PlaybackManager);";
+            
+            string regex = Regex.Replace(payload.Contents!, @"(this\.playbackManager=e,)", $"$1{replacementText}");
+
+            return Content(regex, "text/html");
+        }
     }
 }

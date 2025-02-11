@@ -48,6 +48,14 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 
                 payloads.Add(payload);
             }
+            {
+                JObject payload = new JObject();
+                payload.Add("id", "3d171ef1-a198-48ac-9a60-f6aa98e5fd6d");
+                payload.Add("fileNamePattern", "main.jellyfin.bundle.js");
+                payload.Add("tranformationEndpoint", "/MediaBar/Patch/MainJellyfinBundle");
+                
+                payloads.Add(payload);
+            }
             
             string? publishedServerUrl = m_serverApplicationHost.GetType()
                 .GetProperty("PublishedServerUrl", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(m_serverApplicationHost) as string;
