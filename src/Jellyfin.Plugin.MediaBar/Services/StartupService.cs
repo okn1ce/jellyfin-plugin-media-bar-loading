@@ -30,13 +30,15 @@ namespace Jellyfin.Plugin.MediaBar.Services
 
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
+            m_logger.LogInformation($"MediaBar Startup. Registering file transformations.");
+            
             List<JObject> payloads = new List<JObject>();
 
             {
                 JObject payload = new JObject();
                 payload.Add("id", "0dfac9d7-d898-4944-900b-1c1837707279");
                 payload.Add("fileNamePattern", "index.html");
-                payload.Add("tranformationEndpoint", "/MediaBar/Patch/IndexHtml");
+                payload.Add("transformationEndpoint", "/MediaBar/Patch/IndexHtml");
                 
                 payloads.Add(payload);
             }
@@ -44,7 +46,7 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 JObject payload = new JObject();
                 payload.Add("id", "e6d32b76-d54b-4946-b73e-c5c9c50575c9");
                 payload.Add("fileNamePattern", "home-html\\.[a-zA-z0-9]+\\.chunk\\.js");
-                payload.Add("tranformationEndpoint", "/MediaBar/Patch/HomeHtmlChunk");
+                payload.Add("transformationEndpoint", "/MediaBar/Patch/HomeHtmlChunk");
                 
                 payloads.Add(payload);
             }
@@ -52,21 +54,26 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 JObject payload = new JObject();
                 payload.Add("id", "3d171ef1-a198-48ac-9a60-f6aa98e5fd6d");
                 payload.Add("fileNamePattern", "main.jellyfin.bundle.js");
-                payload.Add("tranformationEndpoint", "/MediaBar/Patch/MainJellyfinBundle");
+                payload.Add("transformationEndpoint", "/MediaBar/Patch/MainJellyfinBundle");
                 
                 payloads.Add(payload);
             }
             
             string? publishedServerUrl = m_serverApplicationHost.GetType()
                 .GetProperty("PublishedServerUrl", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(m_serverApplicationHost) as string;
+            m_logger.LogInformation($"Retrieved value for published server URL: {publishedServerUrl}");
             
+            HttpClient client = new HttpClient();
+            client.BaseAddress = new Uri(publishedServerUrl ?? $"http://localhost:{m_serverApplicationHost.HttpPort}");
+            
+            m_logger.LogInformation($"Setting base address to: {client.BaseAddress}.");
+            m_logger.LogInformation($"Retrieving media bar payloads.");
             foreach (JObject payload in payloads)
             {
-                HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri(publishedServerUrl ?? $"http://localhost:{m_serverApplicationHost.HttpPort}");
-
                 try
                 {
+                    m_logger.LogInformation($"Registering transformation '{payload.Value<string>("id")}' with endpoint '{payload.Value<string>("transformationEndpoint")}'");
+                    
                     await client.PostAsync("/FileTransformation/RegisterTransformation",
                         new StringContent(payload.ToString(Formatting.None),
                             MediaTypeHeaderValue.Parse("application/json")));
