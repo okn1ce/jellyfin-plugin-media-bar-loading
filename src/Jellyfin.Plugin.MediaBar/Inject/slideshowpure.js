@@ -1,34 +1,73 @@
-﻿const slidesInit = () => {
+﻿/**
+ * Credentials for a given server
+ * @typedef {Object} ServerCredentials
+ * @property {string} Id
+ * @property {string} AccessToken
+ */
+
+/**
+ * Credentials
+ * @typedef {Object} Credentials
+ * @property {ServerCredentials[]} Servers
+ */
+
+/**
+ * Fetches the credentials inside of localstorage
+ * @returns {{token: string, userId: string}} Credential resource
+ */
+const getJellyfinCredentials = () => {
+    const jellyfinCreds = localStorage.getItem("jellyfin_credentials");
+
+    try {
+        /**
+         * @type {Credentials}
+         */
+        const serverCredentials = JSON.parse(jellyfinCreds);
+
+        const firstServer = serverCredentials.Servers[0];
+
+        if (!firstServer) {
+            console.error("Could not find credentials for the client");
+            return;
+        }
+
+        return { token: firstServer.AccessToken, userId: firstServer.UserId };
+    } catch (e) {
+        console.error("Could not parse jellyfin credentials", e);
+    }
+};
+
+const slidesInit = () => {
+    if (window.hasInitializedSlideshow) {
+        console.log("Slideshow already initialized. Skipping re-init.");
+        return;
+    }
+    window.hasInitializedSlideshow = true;
     const shuffleInterval = 8000;
     let isTransitioning = false;
     const listFileName = `${window.location.origin}/web/avatars/list.txt`;
-    const jsonCredentials = sessionStorage.getItem("json-credentials");
-    let userId = null;
-    let token = null;
-    //const deviceId = localStorage.getItem("_deviceId2");
-    //console.log(deviceId);
-    if (jsonCredentials) {
-        const credentials = JSON.parse(jsonCredentials);
-        userId = credentials.Servers[0].UserId;
-        token = credentials.Servers[0].AccessToken;
-    }
+
+    const { token, userId } = getJellyfinCredentials();
+
     const shuffleArray = (array) => array.sort(() => Math.random() - 0.5);
     const truncateText = (element, maxLength) => {
         let text = element.innerText;
         if (text.length > maxLength)
             element.innerText = text.substring(0, maxLength) + "...";
     };
+
     const createSlideElement = (item, title) => {
         const itemId = item.Id;
         const plot = item.Overview || "No overview available";
         const rating = item.CommunityRating;
-        const tomato = item.CriticRating;
+        const criticRating = item.CriticRating;
         const runtime = item.RunTimeTicks;
-        const genre = item.Genres;
+        const genresArray = item.Genres;
         const youtube = item.RemoteTrailers;
         const age = item.OfficialRating;
         const date = item.PremiereDate;
         const season = item.ChildCount;
+
         function createSeparator() {
             const separatorHtml =
                 '<i class="material-icons radio_button_off separator-icon"></i>';
@@ -46,33 +85,43 @@
         backdrop.className = "backdrop";
         backdrop.src = `${window.location.origin}/Items/${itemId}/Images/Backdrop/0`;
         backdrop.alt = "Backdrop";
+
         const backdropOverlay = document.createElement("div");
         backdropOverlay.className = "backdrop-overlay";
+
         const backdropContainer = document.createElement("div");
         backdropContainer.className = "backdrop-container";
         backdropContainer.appendChild(backdrop);
         backdropContainer.appendChild(backdropOverlay);
+
         const logo = document.createElement("img");
         logo.className = "logo";
         logo.src = `${window.location.origin}/Items/${itemId}/Images/Logo`;
         logo.alt = "Logo";
+
         const logoContainer = document.createElement("div");
         logoContainer.className = "logo-container";
         logoContainer.appendChild(logo);
+
         const featuredContent = document.createElement("div");
         featuredContent.className = "featured-content";
         featuredContent.textContent = title;
+
         const plotElement = document.createElement("div");
         plotElement.className = "plot";
         plotElement.textContent = plot;
         truncateText(plotElement, 360);
+
         const plotContainer = document.createElement("div");
         plotContainer.className = "plot-container";
         plotContainer.appendChild(plotElement);
+
         const gradientOverlay = document.createElement("div");
         gradientOverlay.className = "gradient-overlay";
+
         const runTimeElement = document.createElement("div");
         runTimeElement.className = "runTime";
+
         if (season === undefined) {
             const milliseconds = runtime / 10000;
             const currentTime = new Date();
@@ -83,8 +132,10 @@
         } else {
             runTimeElement.textContent = `${season} Season${season > 1 ? "s" : ""}`;
         }
+
         const ratingTest = document.createElement("div");
         ratingTest.className = "rating-value";
+
         const imdbLogo = document.createElement("img");
         imdbLogo.className = "imdb-logo";
         imdbLogo.src =
@@ -93,6 +144,7 @@
         imdbLogo.style.width = "30px";
         imdbLogo.style.height = "30px";
         ratingTest.appendChild(imdbLogo);
+
         if (typeof rating === "number") {
             const formattedRating = rating.toFixed(1);
             ratingTest.innerHTML += `${formattedRating} ⭐`;
@@ -101,21 +153,25 @@
             ratingTest.innerHTML += `N/A ⭐`;
         }
         ratingTest.appendChild(createSeparator());
+
         const tomatoRatingDiv = document.createElement("div");
         tomatoRatingDiv.className = "tomato-rating";
-        const criticRating = item.CriticRating;
+
         const tomatoLogo = document.createElement("img");
         tomatoLogo.className = "tomato-logo";
-        const criticLogo = document.createElement("img");
-        criticLogo.className = "critic-logo";
         tomatoLogo.src =
             "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Rotten_Tomatoes_positive_audience.svg/1920px-Rotten_Tomatoes_positive_audience.svg.png";
+
+        const criticLogo = document.createElement("img");
+        criticLogo.className = "critic-logo";
+
         let valueElement;
         if (typeof criticRating === "number") {
             valueElement = document.createTextNode(`${criticRating}% `);
         } else {
             valueElement = document.createTextNode(`N/A `);
         }
+
         if (criticRating === undefined || criticRating <= 59) {
             criticLogo.src =
                 "https://upload.wikimedia.org/wikipedia/commons/thumb/5/52/Rotten_Tomatoes_rotten.svg/1024px-Rotten_Tomatoes_rotten.svg.png";
@@ -128,22 +184,28 @@
         tomatoLogo.style.height = "17px";
         criticLogo.style.width = "15px";
         criticLogo.style.height = "15px";
+
         tomatoRatingDiv.appendChild(tomatoLogo);
         tomatoRatingDiv.appendChild(valueElement);
         tomatoRatingDiv.appendChild(criticLogo);
         tomatoRatingDiv.appendChild(createSeparator());
+
         const ageRatingDiv = document.createElement("div");
         ageRatingDiv.className = "age-rating";
+
         if (item.OfficialRating) {
             ageRatingDiv.innerHTML = `${item.OfficialRating}`;
         } else {
             ageRatingDiv.innerHTML = `N/A`;
         }
+
         const calender = "📅";
         const premiereDate = document.createElement("div");
         premiereDate.className = "date";
+
         const year = date ? new Date(date).getFullYear() : "N/A";
         premiereDate.textContent = isNaN(year) ? "N/A" : year;
+
         ratingTest.appendChild(tomatoRatingDiv);
         ratingTest.appendChild(document.createTextNode(calender));
         ratingTest.appendChild(premiereDate);
@@ -151,7 +213,7 @@
         ratingTest.appendChild(ageRatingDiv);
         ratingTest.appendChild(createSeparator());
         ratingTest.appendChild(runTimeElement);
-        const genresArray = item.Genres;
+
         function parseGenres(genresArray) {
             if (genresArray && genresArray.length > 0) {
                 return genresArray.slice(0, 3).join(" 🔹 ");
@@ -159,9 +221,11 @@
                 return "No Genre Available";
             }
         }
+
         const genreElement = document.createElement("div");
         genreElement.className = "genre";
         genreElement.innerHTML = parseGenres(genresArray);
+
         const infoContainer = document.createElement("div");
         infoContainer.className = "info-container";
         infoContainer.appendChild(ratingTest);
@@ -271,14 +335,11 @@
         }
     };
     const fetchItemDetails = async (itemId) => {
-        const response = await fetch(
-            `${window.location.origin}/Users/${userId}/Items/${itemId}`,
-            {
-                headers: {
-                    Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDeviceName", DeviceId="YourDeviceId", Version="YourClientVersion", Token="${token}"`,
-                },
-            }
-        );
+        const response = await fetch(`${window.location.origin}/Items/${itemId}`, {
+            headers: {
+                Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDeviceName", DeviceId="YourDeviceId", Version="YourClientVersion", Token="${token}"`,
+            },
+        });
         const item = await response.json();
         console.log("Item Title:", item.Name);
         return item;
@@ -302,7 +363,7 @@
     const fetchItemsFromServer = async () => {
         try {
             const response = await fetch(
-                `${window.location.origin}/Users/${userId}/Items?IncludeItemTypes=Movie,Series&Recursive=true&hasOverview=true&imageTypes=Logo,Backdrop&isPlayed=False&Limit=150`,
+                `${window.location.origin}/Items?IncludeItemTypes=Movie,Series&Recursive=true&hasOverview=true&imageTypes=Logo,Backdrop&SortBy=random&isPlayed=False&Limit=500`,
                 {
                     headers: {
                         Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDeviceName", DeviceId="YourDeviceId", Version="YourClientVersion", Token="${token}"`,
@@ -352,6 +413,8 @@
         const dots = document.querySelectorAll(".dot");
         slides.forEach((slide, i) => {
             if (i === index) {
+                console.log(`Showing slide ${index}`); // Debugging
+                slide.style.removeProperty("display");
                 slide.style.display = "block";
                 slide.offsetHeight;
                 slide.style.opacity = "1";
@@ -363,6 +426,7 @@
                     slide.style.display = "none";
                 }, 500);
             }
+            document.getElementById("slides-container").offsetHeight;
         });
         dots.forEach((dot, i) => {
             dot.classList.toggle("active", i === index % 5);
@@ -471,15 +535,3 @@
     };
     initializeSlides();
 };
-document.addEventListener("DOMContentLoaded", () => {
-    document.body.addEventListener("click", (event) => {
-        const homeButton = event.target.matches(
-            ".headerHomeButton, .css-17c09up, .mainDrawer-scrollContainer > a:nth-child(2)"
-        );
-        if (homeButton) {
-            event.preventDefault();
-            window.location.href = "/web/index.html#/home.html";
-            setTimeout(handleHomeNavigation, 300);
-        }
-    });
-});

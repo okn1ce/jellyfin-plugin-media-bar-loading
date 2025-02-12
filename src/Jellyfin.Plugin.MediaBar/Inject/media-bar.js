@@ -1,54 +1,35 @@
-﻿function saveCredentialsToSessionStorage(credentials) {
-    try {
-        sessionStorage.setItem(
-            "json-credentials",
-            JSON.stringify(credentials)
-        );
-        console.log("Credentials saved to sessionStorage.");
-    } catch (error) {
-        console.error("Error saving credentials:", error);
-    }
-}
-function saveApiKey(apiKey) {
-    try {
-        sessionStorage.setItem("api-key", apiKey);
-        console.log("API key saved to sessionStorage.");
-    } catch (error) {
-        console.error("Error saving API key:", error);
-    }
-}
-(function () {
-    var originalConsoleLog = console.log;
-    console.log = function (message) {
-        originalConsoleLog.apply(console, arguments);
-        if (
-            typeof message === "string" &&
-            message.startsWith("Stored JSON credentials:")
-        ) {
-            try {
-                var jsonString = message.substring(
-                    "Stored JSON credentials: ".length
-                );
-                var credentials = JSON.parse(jsonString);
-                saveCredentialsToSessionStorage(credentials);
-            } catch (error) {
-                console.error("Error parsing credentials:", error);
-            }
-        }
-        if (
-            typeof message === "string" &&
-            message.startsWith("opening web socket with url:")
-        ) {
-            try {
-                var url = message.split("url:")[1].trim();
-                var urlParams = new URL(url).searchParams;
-                var apiKey = urlParams.get("api_key");
-                if (apiKey) {
-                    saveApiKey(apiKey);
+﻿(function () {
+    // List of CSS selectors for Home buttons
+    const buttonSelectors = [
+        ".headerHomeButton.barsMenuButton",
+        ".css-17c09up",
+        ".mainDrawer-scrollContainer > a:nth-child(2)"
+    ];
+
+    // Polling interval to check for buttons
+    const intervalId = setInterval(function () {
+        buttonSelectors.forEach(selector => {
+            // Try to find the button
+            const homeButton = document.querySelector(selector);
+
+            // If the button is found
+            if (homeButton) {
+                // Attach the click event listener if not already added
+                if (!homeButton.hasAttribute("data-home-handler")) {
+                    homeButton.addEventListener("click", function (event) {
+                        event.preventDefault(); // Prevent default behavior if necessary
+                        window.location.href = "/web/index.html#/home.html";
+                    });
+
+                    // Mark the button as handled
+                    homeButton.setAttribute("data-home-handler", "true");
                 }
-            } catch (error) {
-                console.error("Error extracting API key:", error);
             }
+        });
+
+        // Stop polling if all buttons are found
+        if (buttonSelectors.every(selector => document.querySelector(selector))) {
+            clearInterval(intervalId);
         }
-    };
+    }, 100); // Check every 100ms
 })();
