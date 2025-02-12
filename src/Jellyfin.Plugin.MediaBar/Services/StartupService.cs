@@ -1,4 +1,5 @@
-﻿using System.Net.Http.Headers;
+﻿using System.Net;
+using System.Net.Http.Headers;
 using System.Reflection;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
@@ -31,6 +32,8 @@ namespace Jellyfin.Plugin.MediaBar.Services
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             m_logger.LogInformation($"MediaBar Startup. Registering file transformations.");
+            m_logger.LogInformation("Delaying 5 seconds to ensure file transformation is ready to receive requests.");
+            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
             
             List<JObject> payloads = new List<JObject>();
 
