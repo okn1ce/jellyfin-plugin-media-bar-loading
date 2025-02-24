@@ -7,22 +7,44 @@
 
 <details>
   <summary>Original README.md from MakD</summary>
-  
+
 ## TODO - Design changes upcoming next release
 
 Thanks to the Man, the Legend [BobHasNoSoul](https://github.com/BobHasNoSoul) for his work on the [jellyfinfeatured](https://github.com/BobHasNoSoul/jellyfin-featured) and [SethBacon](https://forum.jellyfin.org/u-sethbacon) and [TedHinklater](https://github.com/tedhinklater) for their take on the [Jellyfin-Featured-Content-Bar](https://github.com/tedhinklater/Jellyfin-Featured-Content-Bar). 
 
-Here I present my version of the same with some code improvements, loading optimizations, and Security Enhancements. Works best with the [Zombie theme](https://github.com/MakD/zombie-release) (_Shameless Plug_), but it fits with every other theme the creators have put their hard work in. You might've to edit the color accents in the CSS to match yours.
+Here I present my version of the same with some code improvements, loading optimizations, and Security Enhancements. Works best with the [Zombie theme](https://github.com/MakD/zombie-release) (_Shameless Plug_ `@import url(https://cdn.jsdelivr.net/gh/MakD/zombie-release@latest/zombie_revived.css);`, visit the repo for more color schemes), but it fits with every other theme the creators have put their hard work in. You should edit the color accents in the CSS to match yours.
+
+
+
+> <ins>**Before Installing, please take a backup of your index.html, main.jellyfin.bundle.js and home-html.xxxxxx.chunk.js files**<ins>
 
 <details>
-<summary> Desktop Layout </summary>
+<summary> Desktop Layout - Normal </summary>
   
 ![Jellyfin Desktop Layout](https://raw.githubusercontent.com/MakD/Jellyfin-Media-Bar/refs/heads/main/img/Jelly-Web.png)
   
 </details>
 
 <details>
-<summary> Mobile Layout </summary>
+<summary> Desktop Layout - Fullscreen </summary>
+  
+![Jellyfin Desktop Layout](https://raw.githubusercontent.com/MakD/Jellyfin-Media-Bar/refs/heads/main/img/Jelly-Web%20-%20Fullscreen%20Mode.png)
+
+- Download the slideshowpure-fullsreen.css, rename it to `slideshowpure,css`, and replace the default CSS with the full-screen one.
+  
+</details>
+
+<details>
+
+<summary> Mobile Layout - Fullscreen </summary>
+  
+![Jellyfin Mobile Layout](https://raw.githubusercontent.com/MakD/Jellyfin-Media-Bar/refs/heads/main/img/Jelly-Mobile-Fullscreen.png)
+
+</details>
+
+<details>
+  
+<summary> Mobile Layout - Normal </summary>
   
 ![Jellyfin Mobile Layout](https://raw.githubusercontent.com/MakD/Jellyfin-Media-Bar/refs/heads/main/img/Jelly-Mobile.png)
 
@@ -109,7 +131,7 @@ Here I present my version of the same with some code improvements, loading optim
 <summary>main.jellyfin.bundle.js</summary>
 
 1. Similarly, search for `main.jellyfin.bundle.js` in the `jellyfin-web` directory. Open it with any code editor with administrator privileges.
-2. Search for `this.playbackManager = e,`
+2. Search for `this.playbackManager=e,`
 3. Right after the `,`, paste the code block `window.PlaybackManager = this.playbackManager;console.log("PlaybackManager is now globally available:", window.PlaybackManager);`
 
 </details>
@@ -135,4 +157,14 @@ ItemID4
 ItemID5
 ```
 The next time it loads, it will display these items.
+
+# Uninstall the Bar
+
+<details>
+  
+<summary> Roll Back </summary>
+
+Restore the `index.html`, `home-html.xxxxxx.chunk.js`, and `main.jellyfin.bundle.js` and you are good to go!!!
+
+</details>
 </details>
