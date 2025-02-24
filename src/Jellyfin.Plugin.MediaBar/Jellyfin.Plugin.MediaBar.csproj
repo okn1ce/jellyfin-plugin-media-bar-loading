@@ -19,6 +19,7 @@
 
     <ItemGroup>
       <None Remove="Inject\home-html.chunk.js" />
+      <EmbeddedResource Include="Configuration\config.html" />
       <EmbeddedResource Include="Inject\home-html.chunk.js" />
       <None Remove="Inject\index.html" />
       <EmbeddedResource Include="Inject\index.html" />

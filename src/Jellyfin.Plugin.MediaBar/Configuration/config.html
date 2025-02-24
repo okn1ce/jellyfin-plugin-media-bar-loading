@@ -1,0 +1,84 @@
+﻿<!DOCTYPE html>
+<html lang="en" xmlns="http://www.w3.org/1999/html">
+<head>
+    <title>Media Bar</title>
+</head>
+<body>
+<div data-role="page" id="mediaBarConfigurationPage" class="page type-interior pluginConfigurationPage fullWidthContent">
+    <div class="content-primary">
+        <div class="verticalSection">
+            <div class="sectionTitleContainer">
+                <h2 class="sectionTitle">Media Bar</h2>
+                <a is="emby-linkbutton" class="raised raised-mini" style="margin-left: 2em;" target="_blank"
+                   href="https://github.com/IAmParadox27/jellyfin-plugin-media-bar">
+                    <i class="md-icon button-icon button-icon-left secondaryText"></i>
+                    <span>Help</span>
+                </a>
+            </div>
+        </div>
+        <hr class="solid">
+
+        <div id="configurationWrapper">
+            <div class="inputContainer">
+                <span>Enabled: </span>
+                <select is="emby-select" class="emby-select-withcolor emby-select" data-id="enabledSelect">
+                    <option value="Enabled">Enabled</option>
+                    <option value="Disabled">Disabled</option>
+                </select>
+                <span>Whether the media bar should appear or not.</span>
+            </div>
+        </div>
+    </div>
+    <script type="text/javascript">
+        if (typeof MediaBarConfig == 'undefined') {
+            
+            const MediaBarConfig = {
+                pluginId: "08f615ea-2107-4f04-89cc-091035f54448",
+                configurationWrapper: document.querySelector("#configurationWrapper"),
+
+                btnSave: document.querySelector("#saveConfig"),
+
+                saveConfig: function (e) {
+                    e.preventDefault();
+                    Dashboard.showLoadingMsg();
+                    const config = {
+                        Enabled: document.querySelector("#enabledSelect").value,
+                    };
+
+                    window.ApiClient.updatePluginConfiguration(MediaBarConfig.pluginId, config)
+                        .then(Dashboard.processPluginConfigurationUpdateResult)
+                        .catch(function (error) {
+                            console.error(error);
+                        })
+                        .finally(function () {
+                            Dashboard.hideLoadingMsg();
+                        });
+                },
+                loadConfig: function () {
+                    Dashboard.showLoadingMsg();
+                    window.ApiClient.getPluginConfiguration(MediaBarConfig.pluginId)
+                        .then(function (config) {
+                            document.querySelector("#enabledSelect").value = config.Enabled;
+                        })
+                        .catch(function (error) {
+                            console.error(error);
+                        })
+                        .finally(function () {
+                            Dashboard.hideLoadingMsg();
+                        });
+                },
+                init: function () {
+                    MediaBarConfig.btnSave.addEventListener("click", MediaBarConfig.saveConfig);
+                    MediaBarConfig.loadConfig();
+                }
+            }
+
+            // view.addEventListener("viewshow", function (e) {
+            document.querySelector('#mediaBarConfigurationPage').addEventListener("pageshow", function () {
+                MediaBarConfig.init();
+            });
+        }
+    </script>
+</div>
+</body>
+</html>
