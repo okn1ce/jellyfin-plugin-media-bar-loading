@@ -18,16 +18,22 @@
         </div>
         <hr class="solid">
 
-        <div id="configurationWrapper">
-            <div class="inputContainer">
-                <span>Enabled: </span>
-                <select is="emby-select" class="emby-select-withcolor emby-select" data-id="enabledSelect">
-                    <option value="Enabled">Enabled</option>
-                    <option value="Disabled">Disabled</option>
-                </select>
-                <span>Whether the media bar should appear or not.</span>
+        <form class="mediaBarConfigurationForm">
+            <div id="configurationWrapper">
+                <div class="inputContainer">
+                    <span>Enabled: </span>
+                    <select is="emby-select" class="emby-select-withcolor emby-select" data-id="enabledSelect">
+                        <option value="Enabled">Enabled</option>
+                        <option value="Disabled">Disabled</option>
+                    </select>
+                    <span>Whether the media bar should appear or not.</span>
+                </div>
             </div>
-        </div>
+            <br />
+            <button id="saveConfig" is="emby-button" type="submit" class="raised button-submit block">
+                <span>Save</span>
+            </button>
+        </form>
     </div>
     <script type="text/javascript">
         if (typeof MediaBarConfig == 'undefined') {
