@@ -48,7 +48,7 @@
                     e.preventDefault();
                     Dashboard.showLoadingMsg();
                     const config = {
-                        Enabled: document.querySelector("#enabledSelect").value,
+                        Enabled: document.querySelector("[data-id=enabledSelect]").value,
                     };
 
                     window.ApiClient.updatePluginConfiguration(MediaBarConfig.pluginId, config)
@@ -64,7 +64,7 @@
                     Dashboard.showLoadingMsg();
                     window.ApiClient.getPluginConfiguration(MediaBarConfig.pluginId)
                         .then(function (config) {
-                            document.querySelector("#enabledSelect").value = config.Enabled;
+                            document.querySelector("[data-id=enabledSelect]").value = config.Enabled;
                         })
                         .catch(function (error) {
                             console.error(error);
