@@ -3,6 +3,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Text;
+using Jellyfin.Plugin.MediaBar.Helpers;
+using Jellyfin.Plugin.MediaBar.Model;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
 using MediaBrowser.Model.Tasks;
@@ -24,11 +26,13 @@ namespace Jellyfin.Plugin.MediaBar.Services
         
         private readonly IServerApplicationHost m_serverApplicationHost;
         private readonly ILogger<MediaBarPlugin> m_logger;
+        private readonly NamedPipeService m_namedPipeService;
 
-        public StartupService(IServerApplicationHost serverApplicationHost, ILogger<MediaBarPlugin> logger)
+        public StartupService(IServerApplicationHost serverApplicationHost, ILogger<MediaBarPlugin> logger, NamedPipeService namedPipeService)
         {
             m_serverApplicationHost = serverApplicationHost;
             m_logger = logger;
+            m_namedPipeService = namedPipeService;
         }
 
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
@@ -42,6 +46,8 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 payload.Add("id", "0dfac9d7-d898-4944-900b-1c1837707279");
                 payload.Add("fileNamePattern", "index.html");
                 payload.Add("transformationEndpoint", "/MediaBar/Patch/IndexHtml");
+                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.Patch.IndexHtml");
+                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.Patch.IndexHtml", TransformationPatches.IndexHtml);
                 
                 payloads.Add(payload);
             }
@@ -50,6 +56,8 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 payload.Add("id", "e6d32b76-d54b-4946-b73e-c5c9c50575c9");
                 payload.Add("fileNamePattern", "home-html\\.[a-zA-z0-9]+\\.chunk\\.js");
                 payload.Add("transformationEndpoint", "/MediaBar/Patch/HomeHtmlChunk");
+                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.Patch.HomeHtmlChunk");
+                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.Patch.HomeHtmlChunk", TransformationPatches.HomeHtmlChunk);
                 
                 payloads.Add(payload);
             }
@@ -58,6 +66,8 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 payload.Add("id", "3d171ef1-a198-48ac-9a60-f6aa98e5fd6d");
                 payload.Add("fileNamePattern", "main.jellyfin.bundle.js");
                 payload.Add("transformationEndpoint", "/MediaBar/Patch/MainJellyfinBundle");
+                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.Patch.MainBundle");
+                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.Patch.MainBundle", TransformationPatches.MainBundle);
                 
                 payloads.Add(payload);
             }
@@ -112,6 +122,35 @@ namespace Jellyfin.Plugin.MediaBar.Services
                     }
                 }
             }
+        }
+
+        private void RegisterPipeEndpoint(string pipeName, Func<PatchRequestPayload, string> handler)
+        {
+            m_namedPipeService.CreateNamedPipeHandler(pipeName, async stream =>
+            {
+                byte[] lengthBuffer = new byte[8];
+                await stream.ReadExactlyAsync(lengthBuffer, 0, lengthBuffer.Length);
+                long length = BitConverter.ToInt64(lengthBuffer, 0);
+                        
+                MemoryStream memoryStream = new MemoryStream();
+                while (length > 0)
+                {
+                    byte[] buffer = new byte[Math.Min(length, 1024)];
+                    int readBytes = await stream.ReadAsync(buffer, 0, buffer.Length);
+                    length -= readBytes;
+                            
+                    memoryStream.Write(buffer, 0, readBytes);
+                }
+                        
+                string rawJson = Encoding.UTF8.GetString(memoryStream.ToArray());
+                
+                string response = handler(JsonConvert.DeserializeObject<PatchRequestPayload>(rawJson)!);
+                byte[] responseBuffer = Encoding.UTF8.GetBytes(response);
+                byte[] responseLengthBuffer = BitConverter.GetBytes((long)responseBuffer.Length);
+                        
+                await stream.WriteAsync(responseLengthBuffer, 0, responseLengthBuffer.Length);
+                await stream.WriteAsync(responseBuffer, 0, responseBuffer.Length);
+            });
         }
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()
