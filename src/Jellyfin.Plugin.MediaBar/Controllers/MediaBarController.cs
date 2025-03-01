@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using System.Text.RegularExpressions;
+using Jellyfin.Plugin.MediaBar.Helpers;
 using Jellyfin.Plugin.MediaBar.Model;
 using Microsoft.AspNetCore.Mvc;
 
@@ -35,34 +36,19 @@ namespace Jellyfin.Plugin.MediaBar.Controllers
         [HttpPost("Patch/IndexHtml")]
         public ActionResult PatchIndexHtml([FromBody] PatchRequestPayload payload)
         {
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"{typeof(MediaBarPlugin).Namespace}.Inject.index.html")!;
-            using TextReader reader = new StreamReader(stream);
-
-            string regex = Regex.Replace(payload.Contents!, "(</body>)", $"{reader.ReadToEnd()}$1");
-        
-            return Content(regex, "text/html");
+            return Content(TransformationPatches.IndexHtml(payload), "text/html");
         }
 
         [HttpPost("Patch/HomeHtmlChunk")]
         public ActionResult PatchHomeHtmlChunk([FromBody] PatchRequestPayload payload)
         {
-            Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"{typeof(MediaBarPlugin).Namespace}.Inject.home-html.chunk.js")!;
-            using TextReader reader = new StreamReader(stream);
-
-            string regex = Regex.Replace(payload.Contents!, "(id=\"homeTab\" data-index=\"0\">)", $"$1{reader.ReadToEnd()}");
-        
-            return Content(regex, "text/html");
+            return Content(TransformationPatches.HomeHtmlChunk(payload), "text/html");
         }
 
         [HttpPost("Patch/MainJellyfinBundle")]
         public ActionResult PatchMainBundle([FromBody] PatchRequestPayload payload)
         {
-            string replacementText =
-                "window.PlaybackManager=this.playbackManager;console.log(\"PlaybackManager is now globally available:\",window.PlaybackManager);";
-            
-            string regex = Regex.Replace(payload.Contents!, @"(this\.playbackManager=e,)", $"$1{replacementText}");
-
-            return Content(regex, "text/html");
+            return Content(TransformationPatches.MainBundle(payload), "text/html");
         }
     }
 }
