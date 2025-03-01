@@ -1,6 +1,8 @@
-﻿using System.Net;
+﻿using System.IO.Pipes;
+using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Text;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
 using MediaBrowser.Model.Tasks;
@@ -32,8 +34,6 @@ namespace Jellyfin.Plugin.MediaBar.Services
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             m_logger.LogInformation($"MediaBar Startup. Registering file transformations.");
-            m_logger.LogInformation("Delaying 5 seconds to ensure file transformation is ready to receive requests.");
-            await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
             
             List<JObject> payloads = new List<JObject>();
 
@@ -62,29 +62,54 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 payloads.Add(payload);
             }
             
-            string? publishedServerUrl = m_serverApplicationHost.GetType()
-                .GetProperty("PublishedServerUrl", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(m_serverApplicationHost) as string;
-            m_logger.LogInformation($"Retrieved value for published server URL: {publishedServerUrl}");
-            
-            HttpClient client = new HttpClient();
-            client.BaseAddress = new Uri(publishedServerUrl ?? $"http://localhost:{m_serverApplicationHost.HttpPort}");
-            
-            m_logger.LogInformation($"Setting base address to: {client.BaseAddress}.");
-            m_logger.LogInformation($"Retrieving media bar payloads.");
-            foreach (JObject payload in payloads)
+            string fileTransformationPipeName = "Jellyfin.Plugin.FileTransformation.NamedPipe";
+            bool serverSupportsPipeCommunication = Directory.GetFiles(@"\\.\pipe\").Contains($@"\\.\pipe\{fileTransformationPipeName}");
+
+            if (serverSupportsPipeCommunication)
             {
-                try
+                foreach (JObject payload in payloads)
                 {
-                    m_logger.LogInformation($"Registering transformation '{payload.Value<string>("id")}' with endpoint '{payload.Value<string>("transformationEndpoint")}'");
-                    
-                    await client.PostAsync("/FileTransformation/RegisterTransformation",
-                        new StringContent(payload.ToString(Formatting.None),
-                            MediaTypeHeaderValue.Parse("application/json")));
+                    NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", fileTransformationPipeName, PipeDirection.InOut);
+                    await pipeClient.ConnectAsync();
+                    byte[] payloadBytes = Encoding.UTF8.GetBytes(payload.ToString(Formatting.None));
+                            
+                    await pipeClient.WriteAsync(BitConverter.GetBytes((long)payloadBytes.Length));
+                    await pipeClient.WriteAsync(payloadBytes, 0, payloadBytes.Length);
+                            
+                    pipeClient.ReadByte();
+                            
+                    await pipeClient.DisposeAsync();
                 }
-                catch (Exception ex)
+            }
+            else
+            {
+                m_logger.LogInformation("Delaying 5 seconds to ensure file transformation is ready to receive requests.");
+                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
+                
+                string? publishedServerUrl = m_serverApplicationHost.GetType()
+                    .GetProperty("PublishedServerUrl", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(m_serverApplicationHost) as string;
+                m_logger.LogInformation($"Retrieved value for published server URL: {publishedServerUrl}");
+                
+                HttpClient client = new HttpClient();
+                client.BaseAddress = new Uri(publishedServerUrl ?? $"http://localhost:{m_serverApplicationHost.HttpPort}");
+                
+                m_logger.LogInformation($"Setting base address to: {client.BaseAddress}.");
+                m_logger.LogInformation($"Retrieving media bar payloads.");
+                foreach (JObject payload in payloads)
                 {
-                    m_logger.LogError(ex, $"Caught exception when attempting to register file transformation. Ensure you have `File Transformation` plugin installed on your server.");
-                    return;
+                    try
+                    {
+                        m_logger.LogInformation($"Registering transformation '{payload.Value<string>("id")}' with endpoint '{payload.Value<string>("transformationEndpoint")}'");
+                        
+                        await client.PostAsync("/FileTransformation/RegisterTransformation",
+                            new StringContent(payload.ToString(Formatting.None),
+                                MediaTypeHeaderValue.Parse("application/json")));
+                    }
+                    catch (Exception ex)
+                    {
+                        m_logger.LogError(ex, $"Caught exception when attempting to register file transformation. Ensure you have `File Transformation` plugin installed on your server.");
+                        return;
+                    }
                 }
             }
         }
