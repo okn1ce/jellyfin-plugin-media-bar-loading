@@ -73,9 +73,11 @@ namespace Jellyfin.Plugin.MediaBar.Services
             }
             
             string fileTransformationPipeName = "Jellyfin.Plugin.FileTransformation.NamedPipe";
-            bool serverSupportsPipeCommunication = Directory.GetFiles(@"\\.\pipe\").Contains($@"\\.\pipe\{fileTransformationPipeName}");
-
-            if (serverSupportsPipeCommunication)
+            MethodInfo? getPipePathMethod = typeof(PipeStream).GetMethod("GetPipePath", BindingFlags.Static | BindingFlags.NonPublic);
+            string? pipePath = getPipePathMethod?.Invoke(null, new object[] { ".", fileTransformationPipeName }) as string;
+            string? pipeDirectory = Path.GetDirectoryName(pipePath);
+            
+            if (Directory.Exists(pipeDirectory) && Directory.GetFiles(pipeDirectory).Contains(pipePath))
             {
                 foreach (JObject payload in payloads)
                 {
