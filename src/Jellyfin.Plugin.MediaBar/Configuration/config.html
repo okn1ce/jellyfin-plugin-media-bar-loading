@@ -28,6 +28,24 @@
                     </select>
                     <span>Whether the media bar should appear or not.</span>
                 </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input type="checkbox" id="chkUseAvatarsFile" is="emby-checkbox" class="emby-checkbox" data-id="chkUseAvatarsFile" />
+                        <span class="checkboxLabel">Use physical avatars file</span>
+                        <span class="checkboxOutline">
+                            <span class="material-icons checkboxIcon checkboxIcon-checked check" aria-hidden="true"></span>
+                            <span class="material-icons checkboxIcon checkboxIcon-unchecked " aria-hidden="true"></span>
+                        </span>
+                    </label>
+                    <div class="fieldDescription">If checked, the plugin will look for a list.txt file in the avatars directory at the root of jellyfin-web.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="txtAvatarsPlaylist">Avatars Playlist</label>
+                    <label class="inputLabel inputLabel-float inputLabelUnfocused" for="txtAvatarsPlaylist"></label>
+                    <input id="txtAvatarsPlaylist" type="text" is="emby-input" class="emby-input" data-id="txtAvatarsPlaylist" />
+                    <div class="fieldDescription">If populated, and "Use physical avatars file" is disabled, this is the name of the playlist which is used to populate the media bar.<br />
+                    If empty, the media bar will randomly populate.</div>
+                </div>
             </div>
             <br />
             <button id="saveConfig" is="emby-button" type="submit" class="raised button-submit block">
@@ -49,6 +67,8 @@
                     Dashboard.showLoadingMsg();
                     const config = {
                         Enabled: document.querySelector("[data-id=enabledSelect]").value,
+                        UseAvatarsFile: document.querySelector("[data-id=chkUseAvatarsFile]").checked,
+                        AvatarsPlaylist: document.querySelector("[data-id=txtAvatarsPlaylist]").value,
                     };
 
                     window.ApiClient.updatePluginConfiguration(MediaBarConfig.pluginId, config)
@@ -65,6 +85,8 @@
                     window.ApiClient.getPluginConfiguration(MediaBarConfig.pluginId)
                         .then(function (config) {
                             document.querySelector("[data-id=enabledSelect]").value = config.Enabled;
+                            document.querySelector("[data-id=chkUseAvatarsFile]").checked = config.UseAvatarsFile;
+                            document.querySelector("[data-id=txtAvatarsPlaylist]").value = config.AvatarsPlaylist;
                         })
                         .catch(function (error) {
                             console.error(error);

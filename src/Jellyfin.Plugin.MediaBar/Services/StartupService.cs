@@ -7,6 +7,8 @@ using Jellyfin.Plugin.MediaBar.Helpers;
 using Jellyfin.Plugin.MediaBar.Model;
 using MediaBrowser.Common.Configuration;
 using MediaBrowser.Controller;
+using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using MediaBrowser.Model.Tasks;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -27,12 +29,17 @@ namespace Jellyfin.Plugin.MediaBar.Services
         private readonly IServerApplicationHost m_serverApplicationHost;
         private readonly ILogger<MediaBarPlugin> m_logger;
         private readonly NamedPipeService m_namedPipeService;
+        private readonly IUserManager m_userManager;
+        private readonly IPlaylistManager m_playlistManager;
 
-        public StartupService(IServerApplicationHost serverApplicationHost, ILogger<MediaBarPlugin> logger, NamedPipeService namedPipeService)
+        public StartupService(IServerApplicationHost serverApplicationHost, ILogger<MediaBarPlugin> logger, NamedPipeService namedPipeService,
+            IUserManager userManager, IPlaylistManager playlistManager)
         {
             m_serverApplicationHost = serverApplicationHost;
             m_logger = logger;
             m_namedPipeService = namedPipeService;
+            m_userManager = userManager;
+            m_playlistManager = playlistManager;
         }
 
         public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
@@ -71,6 +78,19 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 
                 payloads.Add(payload);
             }
+            {
+                JObject payload = new JObject();
+                payload.Add("id", "8d374d6b-3c5b-464a-a2a2-96e92fa81345");
+                payload.Add("fileNamePattern", "avatars/list.txt");
+                payload.Add("transformationEndpoint", "/MediaBar/Avatar/List");
+                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.AvatarsList");
+                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.AvatarsList", innerPayload =>
+                {
+                    return TransformationPatches.AvatarsList(innerPayload, m_playlistManager, m_userManager) ?? "";
+                });
+                
+                payloads.Add(payload);
+            }
             
             string fileTransformationPipeName = "Jellyfin.Plugin.FileTransformation.NamedPipe";
             MethodInfo? getPipePathMethod = typeof(PipeStream).GetMethod("GetPipePath", BindingFlags.Static | BindingFlags.NonPublic);
@@ -87,7 +107,7 @@ namespace Jellyfin.Plugin.MediaBar.Services
                             
                     await pipeClient.WriteAsync(BitConverter.GetBytes((long)payloadBytes.Length));
                     await pipeClient.WriteAsync(payloadBytes, 0, payloadBytes.Length);
-                            
+                    
                     pipeClient.ReadByte();
                             
                     await pipeClient.DisposeAsync();

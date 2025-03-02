@@ -11,9 +11,12 @@ namespace Jellyfin.Plugin.MediaBar
         public override Guid Id => Guid.Parse("08f615ea-2107-4f04-89cc-091035f54448");
 
         public override string Name => "Media Bar";
-    
+
+        public static MediaBarPlugin Instance { get; private set; } = null!;
+        
         public MediaBarPlugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, IServiceProvider serviceProvider) : base(applicationPaths, xmlSerializer)
         {
+            Instance = this;
         }
         
         public IEnumerable<PluginPageInfo> GetPages()

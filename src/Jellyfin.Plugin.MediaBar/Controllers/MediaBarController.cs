@@ -1,8 +1,12 @@
 ﻿using System.Reflection;
-using System.Text.RegularExpressions;
+using Jellyfin.Extensions;
 using Jellyfin.Plugin.MediaBar.Helpers;
 using Jellyfin.Plugin.MediaBar.Model;
+using MediaBrowser.Controller.Entities;
+using MediaBrowser.Controller.Library;
+using MediaBrowser.Controller.Playlists;
 using Microsoft.AspNetCore.Mvc;
+using MediaBrowser.Controller.Entities.TV;
 
 namespace Jellyfin.Plugin.MediaBar.Controllers
 {
@@ -31,6 +35,19 @@ namespace Jellyfin.Plugin.MediaBar.Controllers
             }
         
             return Content(fileContents, contentType);
+        }
+
+        [HttpPost("Avatar/List")]
+        public ActionResult GetAvatarsList([FromBody] PatchRequestPayload payload, [FromServices] IPlaylistManager playlistManager, [FromServices] IUserManager userManager)
+        {
+            string? content = TransformationPatches.AvatarsList(payload, playlistManager, userManager);
+
+            if (content == null)
+            {
+                return NotFound();
+            }
+            
+            return Content(content, "text/plain");
         }
 
         [HttpPost("Patch/IndexHtml")]
