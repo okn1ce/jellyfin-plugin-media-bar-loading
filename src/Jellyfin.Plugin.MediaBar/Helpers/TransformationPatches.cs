@@ -64,6 +64,7 @@ namespace Jellyfin.Plugin.MediaBar.Helpers
             }
 
             idsWritten.Shuffle();
+            idsWritten = idsWritten.Take(Math.Min(15, idsWritten.Count)).ToList();
 
             foreach (Guid id in idsWritten)
             {
