@@ -59,26 +59,6 @@ namespace Jellyfin.Plugin.MediaBar.Services
             }
             {
                 JObject payload = new JObject();
-                payload.Add("id", "e6d32b76-d54b-4946-b73e-c5c9c50575c9");
-                payload.Add("fileNamePattern", "home-html\\.[a-zA-z0-9]+\\.chunk\\.js");
-                payload.Add("callbackAssembly", GetType().Assembly.FullName);
-                payload.Add("callbackClass", typeof(TransformationPatches).FullName);
-                payload.Add("callbackMethod", nameof(TransformationPatches.HomeHtmlChunk));
-                
-                payloads.Add(payload);
-            }
-            {
-                JObject payload = new JObject();
-                payload.Add("id", "3d171ef1-a198-48ac-9a60-f6aa98e5fd6d");
-                payload.Add("fileNamePattern", "main.jellyfin.bundle.js");
-                payload.Add("callbackAssembly", GetType().Assembly.FullName);
-                payload.Add("callbackClass", typeof(TransformationPatches).FullName);
-                payload.Add("callbackMethod", nameof(TransformationPatches.MainBundle));
-                
-                payloads.Add(payload);
-            }
-            {
-                JObject payload = new JObject();
                 payload.Add("id", "8d374d6b-3c5b-464a-a2a2-96e92fa81345");
                 payload.Add("fileNamePattern", "avatars/list.txt");
                 payload.Add("callbackAssembly", GetType().Assembly.FullName);

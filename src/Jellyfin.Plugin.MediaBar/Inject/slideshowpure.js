@@ -1,17 +1,30 @@
 ﻿const getJellyfinCredentials = () => {
     const jellyfinCreds = localStorage.getItem("jellyfin_credentials");
+    const deviceID = localStorage.getItem("_deviceId2");
+    if (!jellyfinCreds) {
+        console.error("No Jellyfin credentials found in localStorage");
+        return;
+    }
     try {
         const serverCredentials = JSON.parse(jellyfinCreds);
-        const firstServer = serverCredentials.Servers[0];
-        if (!firstServer) {
-            console.error("Could not find credentials for the client");
+        const firstServer = serverCredentials?.Servers?.[0];
+        if (!firstServer || !firstServer.AccessToken || !firstServer.UserId) {
+            console.error("Invalid Jellyfin credentials structure");
             return;
         }
-        return { token: firstServer.AccessToken, userId: firstServer.UserId };
+        return {
+            token: firstServer.AccessToken,
+            userId: firstServer.UserId,
+            deviceID
+        };
     } catch (e) {
-        console.error("Could not parse jellyfin credentials", e);
+        console.error("Could not parse Jellyfin credentials", e);
     }
 };
+const credentials = getJellyfinCredentials();
+if (credentials) {
+    console.log("Token:", credentials.token, "UserId:", credentials.userId, "DeviceID:", credentials.deviceID);
+}
 
 const initLoadingScreen = () => {
     const currentPath = window.location.href.toLowerCase();
@@ -32,8 +45,15 @@ const initLoadingScreen = () => {
           </div>
       </div>`;
         document.body.insertAdjacentHTML("beforeend", loadingHTML);
+
         const interval = setInterval(() => {
-            if (document.querySelector(".manualLoginForm")) {
+            if (
+                document.querySelector(".manualLoginForm") ||
+                (
+                    document.querySelector(".homeSectionsContainer") &&
+                    document.querySelector(".slide.active")
+                )
+            ) {
                 $(".bar-loading").fadeOut(700, () => $(".bar-loading").remove());
                 clearInterval(interval);
             }
@@ -41,12 +61,33 @@ const initLoadingScreen = () => {
     }
 };
 initLoadingScreen();
-const slidesInit = async () => {
+
+const observer = new MutationObserver((mutations) => {
+    for (let mutation of mutations) {
+        if (window.location.hash.includes("#/home.html")) {
+            let container = document.getElementById("slides-container");
+
+            if (!container) {
+                container = document.createElement("div");
+                container.id = "slides-container";
+                document.body.appendChild(container);
+                slidesInit();
+            }
+            container.style.display = "block";
+        } else {
+            const container = document.getElementById("slides-container");
+            if (container) container.style.display = "none";
+        }
+    }
+});
+observer.observe(document.body, { childList: true, subtree: true });
+
+
+const slidesInit = () => {
     if (window.hasInitializedSlideshow) {
         console.log("Slideshow already initialized. Skipping re-init.");
         return;
     }
-
     window.hasInitializedSlideshow = !0;
     const shuffleInterval = 8000;
     let isTransitioning = !1;
@@ -97,15 +138,9 @@ const slidesInit = async () => {
         logo.src = `${window.location.origin}/Items/${itemId}/Images/Logo`;
         logo.alt = "Logo";
         logo.loading = "eager";
-        const logoImgBlur = document.createElement("img");
-        logoImgBlur.src = `${window.location.origin}/Items/${itemId}/Images/Logo`;
-        logoImgBlur.alt = item.Name || "Title";
-        logoImgBlur.loading = "eager";
-        logoImgBlur.className = "featured-logo-blur";
         const logoContainer = document.createElement("div");
         logoContainer.className = "logo-container";
         logoContainer.appendChild(logo);
-        logoContainer.appendChild(logoImgBlur);
         const featuredContent = document.createElement("div");
         featuredContent.className = "featured-content";
         featuredContent.textContent = title;
@@ -142,9 +177,9 @@ const slidesInit = async () => {
         ratingTest.appendChild(imdbLogo);
         if (typeof rating === "number") {
             const formattedRating = rating.toFixed(1);
-            ratingTest.innerHTML += `${formattedRating} ⭐`;
+            ratingTest.innerHTML += `${formattedRating}`;
         } else {
-            ratingTest.innerHTML += `N/A ⭐`;
+            ratingTest.innerHTML += `<span style="color: #fff9;">N/A</span>`;
         }
         ratingTest.appendChild(createSeparator());
         const tomatoRatingDiv = document.createElement("div");
@@ -159,7 +194,10 @@ const slidesInit = async () => {
         if (typeof criticRating === "number") {
             valueElement = document.createTextNode(`${criticRating}% `);
         } else {
-            valueElement = document.createTextNode(`N/A `);
+            const naSpan = document.createElement("span");
+            naSpan.textContent = "N/A ";
+            naSpan.style.color = "#fff9";
+            valueElement = naSpan;
         }
         if (criticRating === undefined || criticRating <= 59) {
             criticLogo.src =
@@ -184,13 +222,19 @@ const slidesInit = async () => {
         } else {
             ageRatingDiv.innerHTML = `N/A`;
         }
-        const calender = "📅";
         const premiereDate = document.createElement("div");
         premiereDate.className = "date";
-        const year = date ? new Date(date).getFullYear() : "N/A";
-        premiereDate.textContent = isNaN(year) ? "N/A" : year;
+        const year = date ? new Date(date).getFullYear() : NaN;
+        if (isNaN(year)) {
+            const naSpan = document.createElement("span");
+            naSpan.textContent = "N/A";
+            naSpan.style.color = "#fff9";
+            premiereDate.innerHTML = "";
+            premiereDate.appendChild(naSpan);
+        } else {
+            premiereDate.textContent = year;
+        }
         ratingTest.appendChild(tomatoRatingDiv);
-        ratingTest.appendChild(document.createTextNode(calender));
         ratingTest.appendChild(premiereDate);
         ratingTest.appendChild(createSeparator());
         ratingTest.appendChild(ageRatingDiv);
@@ -214,44 +258,62 @@ const slidesInit = async () => {
         const playButton = document.createElement("button");
         playButton.className = "play-button";
         playButton.innerHTML = `
-  <span class="play-icon"><i class="material-icons">play_circle</i></span>
+  <span class="play-icon"><i class="material-icons">play_circle_fill</i></span>
   <span class="play-text">Play</span>
 `;
         playButton.onclick = async () => {
-            if (!window.PlaybackManager) {
-                console.error("PlaybackManager is not available.");
-                return;
-            }
-            if (!window.ApiClient) {
-                console.error("Jellyfin API client is not available.");
-                return;
-            }
             const apiClient = window.ApiClient;
             const userId = apiClient.getCurrentUserId();
-            if (!userId) {
-                console.error("User not found.");
+            const mediabrowser = apiClient.appName();
+            const appVersion = apiClient.appVersion();
+            const deviceName = apiClient.deviceName();
+            const deviceId = apiClient.deviceId();
+            const accessToken = apiClient.accessToken();
+            const baseUrl = apiClient.serverAddress();
+            if (!userId || !mediabrowser || !deviceName || !deviceId || !appVersion || !accessToken || !baseUrl) {
+                console.error("Details not found.");
                 return;
             }
+            let sessionId = null;
             try {
-                const item = await apiClient.getItem(userId, itemId);
-                if (!item) {
-                    console.error("Media item not found.");
+                const response = await fetch(`${baseUrl}/Sessions?deviceId=${encodeURIComponent(deviceId)}`, {
+                    headers: {
+                        'X-Emby-Authorization': `MediaBrowser Client="${mediabrowser}", Device="${deviceName}", DeviceId="${deviceId}", Version="${appVersion}", Token="${accessToken}"`
+                    }
+                });
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch session data: ${response.statusText}`);
+                }
+                const sessions = await response.json();
+                if (sessions.length === 0) {
+                    console.warn("No sessions found for deviceId:", deviceId);
                     return;
                 }
-                window.PlaybackManager.play({
-                    items: [item],
-                    startPositionTicks: 0,
-                    isMuted: !1,
-                    isPaused: !1,
-                })
-                    .then(() => {
-                        console.log("Playback started successfully.");
-                    })
-                    .catch((error) => {
-                        console.error("Failed to start playback:", error);
-                    });
+                const session = sessions[0];
+                sessionId = session.Id;
+                console.log("Found sessionId:", sessionId);
             } catch (error) {
-                console.error("Error starting playback:", error);
+                console.error("Error fetching session data:", error);
+                return;
+            }
+            if (!sessionId) {
+                console.error("Session ID not found.");
+                return;
+            }
+            const playUrl = `${baseUrl}/Sessions/${sessionId}/Playing?playCommand=PlayNow&itemIds=${itemId}`;
+            try {
+                const playResponse = await fetch(playUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Emby-Authorization': `MediaBrowser Client="${mediabrowser}", Device="${deviceName}", DeviceId="${deviceId}", Version="${appVersion}", Token="${accessToken}"`
+                    }
+                });
+                if (!playResponse.ok) {
+                    throw new Error(`Failed to send play command: ${playResponse.statusText}`);
+                }
+                console.log("Play command sent successfully to session:", sessionId);
+            } catch (error) {
+                console.error("Error sending play command:", error);
             }
         };
         const detailButton = document.createElement("button");
@@ -261,8 +323,8 @@ const slidesInit = async () => {
   <span class="detail-text">Info</span>
 `;
         detailButton.onclick = () => {
-            window.top.location.href = `/#!/details?id=${itemId}`;
-        };
+            Emby.Page.show(`/details?id=${itemId}`);
+        }
         buttonContainer.appendChild(detailButton);
         buttonContainer.appendChild(playButton);
         slide.append(
@@ -280,20 +342,10 @@ const slidesInit = async () => {
     const createSlideForItem = async (item, title) => {
         const container = document.getElementById("slides-container");
         const itemId = item.Id;
-        const backdropUrl = `${window.location.origin}/Items/${itemId}/Images/Backdrop/0`;
-        const logoUrl = `${window.location.origin}/Items/${itemId}/Images/Logo`;
-        const [backdropExists, logoExists] = await Promise.all([
-            fetch(backdropUrl, { method: "HEAD" }).then((res) => res.ok),
-            fetch(logoUrl, { method: "HEAD" }).then((res) => res.ok),
-        ]);
-        if (backdropExists && logoExists) {
-            const slideElement = createSlideElement(item, title);
-            container.appendChild(slideElement);
-            if (container.children.length === 1) {
-                showSlide(0);
-            }
-        } else {
-            console.warn(`Skipping item ${itemId}: Missing backdrop or logo.`);
+        const slideElement = createSlideElement(item, title);
+        container.appendChild(slideElement);
+        if (container.children.length === 1) {
+            showSlide(0);
         }
     };
     const fetchItemDetails = async (itemId) => {
@@ -325,7 +377,7 @@ const slidesInit = async () => {
     const fetchItemsFromServer = async () => {
         try {
             const response = await fetch(
-                `${window.location.origin}/Items?IncludeItemTypes=Movie,Series&Recursive=true&hasOverview=true&imageTypes=Logo,Backdrop&SortBy=random&isPlayed=False&Limit=500`,
+                `${window.location.origin}/Items?IncludeItemTypes=Movie,Series&Recursive=true&hasOverview=true&imageTypes=Logo,Backdrop&SortBy=random&isPlayed=False&Limit=100`,
                 {
                     headers: {
                         Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDeviceName", DeviceId="YourDeviceId", Version="YourClientVersion", Token="${token}"`,
@@ -394,6 +446,15 @@ const slidesInit = async () => {
         });
     };
     const initializeSlideshow = () => {
+        var slideInterval = null;
+        class SlideTimer {
+            constructor(fnctn, time) {
+                var timerObject = setInterval(fnctn, time);
+                this.stop = function () { if (timerObject) { clearInterval(timerObject); timerObject = null; } return this; };
+                this.start = function () { if (!timerObject) { this.stop(); timerObject = setInterval(fnctn, time); } return this; };
+                this.restart = function () { return this.stop().start(); };
+            }
+        }
         const slides = document.querySelectorAll(".slide");
         createPaginationDots();
         const container = document.getElementById("slides-container");
@@ -405,6 +466,7 @@ const slidesInit = async () => {
             isTransitioning = !0;
             currentSlideIndex = (index + slides.length) % slides.length;
             showSlide(currentSlideIndex);
+            slideInterval.restart();
             setTimeout(() => {
                 isTransitioning = !1;
             }, 500);
@@ -417,11 +479,10 @@ const slidesInit = async () => {
         if (slides.length > 0) {
             showSlide(currentSlideIndex);
             container.style.display = "block";
-            setTimeout(() => {
-                setInterval(() => {
+            slideInterval =
+                new SlideTimer(function () {
                     updateCurrentSlide(currentSlideIndex + 1);
                 }, shuffleInterval);
-            }, 8000);
         }
         slides.forEach((slide) => {
             slide.addEventListener(
@@ -533,7 +594,6 @@ const slidesInit = async () => {
         items = shuffleArray(items);
         await createSlidesForItems(items);
         initializeSlideshow();
-        $(".bar-loading").fadeOut(700, () => $(".bar-loading").remove());
     };
     initializeSlides();
 };

@@ -1,1 +1,0 @@
-﻿<div id="slides-container"></div><script>slidesInit()</script>
