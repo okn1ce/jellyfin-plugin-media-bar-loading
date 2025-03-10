@@ -38,9 +38,9 @@ namespace Jellyfin.Plugin.MediaBar.Controllers
         }
 
         [HttpPost("Avatar/List")]
-        public ActionResult GetAvatarsList([FromBody] PatchRequestPayload payload, [FromServices] IPlaylistManager playlistManager, [FromServices] IUserManager userManager)
+        public ActionResult GetAvatarsList([FromBody] PatchRequestPayload payload)
         {
-            string? content = TransformationPatches.AvatarsList(payload, playlistManager, userManager);
+            string? content = TransformationPatches.AvatarsList(payload);
 
             if (content == null)
             {
@@ -48,24 +48,6 @@ namespace Jellyfin.Plugin.MediaBar.Controllers
             }
             
             return Content(content, "text/plain");
-        }
-
-        [HttpPost("Patch/IndexHtml")]
-        public ActionResult PatchIndexHtml([FromBody] PatchRequestPayload payload)
-        {
-            return Content(TransformationPatches.IndexHtml(payload), "text/html");
-        }
-
-        [HttpPost("Patch/HomeHtmlChunk")]
-        public ActionResult PatchHomeHtmlChunk([FromBody] PatchRequestPayload payload)
-        {
-            return Content(TransformationPatches.HomeHtmlChunk(payload), "text/html");
-        }
-
-        [HttpPost("Patch/MainJellyfinBundle")]
-        public ActionResult PatchMainBundle([FromBody] PatchRequestPayload payload)
-        {
-            return Content(TransformationPatches.MainBundle(payload), "text/html");
         }
     }
 }

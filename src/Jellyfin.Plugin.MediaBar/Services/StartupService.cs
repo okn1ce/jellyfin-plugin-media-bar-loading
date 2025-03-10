@@ -2,6 +2,7 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
 using Jellyfin.Plugin.MediaBar.Helpers;
 using Jellyfin.Plugin.MediaBar.Model;
@@ -28,21 +29,19 @@ namespace Jellyfin.Plugin.MediaBar.Services
         
         private readonly IServerApplicationHost m_serverApplicationHost;
         private readonly ILogger<MediaBarPlugin> m_logger;
-        private readonly NamedPipeService m_namedPipeService;
         private readonly IUserManager m_userManager;
         private readonly IPlaylistManager m_playlistManager;
 
-        public StartupService(IServerApplicationHost serverApplicationHost, ILogger<MediaBarPlugin> logger, NamedPipeService namedPipeService,
+        public StartupService(IServerApplicationHost serverApplicationHost, ILogger<MediaBarPlugin> logger,
             IUserManager userManager, IPlaylistManager playlistManager)
         {
             m_serverApplicationHost = serverApplicationHost;
             m_logger = logger;
-            m_namedPipeService = namedPipeService;
             m_userManager = userManager;
             m_playlistManager = playlistManager;
         }
 
-        public async Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
+        public Task ExecuteAsync(IProgress<double> progress, CancellationToken cancellationToken)
         {
             m_logger.LogInformation($"MediaBar Startup. Registering file transformations.");
             
@@ -52,9 +51,9 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 JObject payload = new JObject();
                 payload.Add("id", "0dfac9d7-d898-4944-900b-1c1837707279");
                 payload.Add("fileNamePattern", "index.html");
-                payload.Add("transformationEndpoint", "/MediaBar/Patch/IndexHtml");
-                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.Patch.IndexHtml");
-                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.Patch.IndexHtml", TransformationPatches.IndexHtml);
+                payload.Add("callbackAssembly", GetType().Assembly.FullName);
+                payload.Add("callbackClass", typeof(TransformationPatches).FullName);
+                payload.Add("callbackMethod", nameof(TransformationPatches.IndexHtml));
                 
                 payloads.Add(payload);
             }
@@ -62,9 +61,9 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 JObject payload = new JObject();
                 payload.Add("id", "e6d32b76-d54b-4946-b73e-c5c9c50575c9");
                 payload.Add("fileNamePattern", "home-html\\.[a-zA-z0-9]+\\.chunk\\.js");
-                payload.Add("transformationEndpoint", "/MediaBar/Patch/HomeHtmlChunk");
-                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.Patch.HomeHtmlChunk");
-                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.Patch.HomeHtmlChunk", TransformationPatches.HomeHtmlChunk);
+                payload.Add("callbackAssembly", GetType().Assembly.FullName);
+                payload.Add("callbackClass", typeof(TransformationPatches).FullName);
+                payload.Add("callbackMethod", nameof(TransformationPatches.HomeHtmlChunk));
                 
                 payloads.Add(payload);
             }
@@ -72,9 +71,9 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 JObject payload = new JObject();
                 payload.Add("id", "3d171ef1-a198-48ac-9a60-f6aa98e5fd6d");
                 payload.Add("fileNamePattern", "main.jellyfin.bundle.js");
-                payload.Add("transformationEndpoint", "/MediaBar/Patch/MainJellyfinBundle");
-                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.Patch.MainBundle");
-                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.Patch.MainBundle", TransformationPatches.MainBundle);
+                payload.Add("callbackAssembly", GetType().Assembly.FullName);
+                payload.Add("callbackClass", typeof(TransformationPatches).FullName);
+                payload.Add("callbackMethod", nameof(TransformationPatches.MainBundle));
                 
                 payloads.Add(payload);
             }
@@ -82,97 +81,31 @@ namespace Jellyfin.Plugin.MediaBar.Services
                 JObject payload = new JObject();
                 payload.Add("id", "8d374d6b-3c5b-464a-a2a2-96e92fa81345");
                 payload.Add("fileNamePattern", "avatars/list.txt");
-                payload.Add("transformationEndpoint", "/MediaBar/Avatar/List");
-                payload.Add("transformationPipe", "Jellyfin.Plugin.MediaBar.AvatarsList");
-                RegisterPipeEndpoint("Jellyfin.Plugin.MediaBar.AvatarsList", innerPayload =>
-                {
-                    return TransformationPatches.AvatarsList(innerPayload, m_playlistManager, m_userManager) ?? "";
-                });
+                payload.Add("callbackAssembly", GetType().Assembly.FullName);
+                payload.Add("callbackClass", typeof(TransformationPatches).FullName);
+                payload.Add("callbackMethod", nameof(TransformationPatches.AvatarsList));
                 
                 payloads.Add(payload);
             }
-            
-            string fileTransformationPipeName = "Jellyfin.Plugin.FileTransformation.NamedPipe";
-            MethodInfo? getPipePathMethod = typeof(PipeStream).GetMethod("GetPipePath", BindingFlags.Static | BindingFlags.NonPublic);
-            string? pipePath = getPipePathMethod?.Invoke(null, new object[] { ".", fileTransformationPipeName }) as string;
-            string? pipeDirectory = Path.GetDirectoryName(pipePath);
-            
-            if (Directory.Exists(pipeDirectory) && Directory.GetFiles(pipeDirectory).Contains(pipePath))
-            {
-                foreach (JObject payload in payloads)
-                {
-                    NamedPipeClientStream pipeClient = new NamedPipeClientStream(".", fileTransformationPipeName, PipeDirection.InOut);
-                    await pipeClient.ConnectAsync();
-                    byte[] payloadBytes = Encoding.UTF8.GetBytes(payload.ToString(Formatting.None));
-                            
-                    await pipeClient.WriteAsync(BitConverter.GetBytes((long)payloadBytes.Length));
-                    await pipeClient.WriteAsync(payloadBytes, 0, payloadBytes.Length);
-                    
-                    pipeClient.ReadByte();
-                            
-                    await pipeClient.DisposeAsync();
-                }
-            }
-            else
-            {
-                m_logger.LogInformation("Delaying 5 seconds to ensure file transformation is ready to receive requests.");
-                await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
-                
-                string? publishedServerUrl = m_serverApplicationHost.GetType()
-                    .GetProperty("PublishedServerUrl", BindingFlags.Instance | BindingFlags.NonPublic)?.GetValue(m_serverApplicationHost) as string;
-                m_logger.LogInformation($"Retrieved value for published server URL: {publishedServerUrl}");
-                
-                HttpClient client = new HttpClient();
-                client.BaseAddress = new Uri(publishedServerUrl ?? $"http://localhost:{m_serverApplicationHost.HttpPort}");
-                
-                m_logger.LogInformation($"Setting base address to: {client.BaseAddress}.");
-                m_logger.LogInformation($"Retrieving media bar payloads.");
-                foreach (JObject payload in payloads)
-                {
-                    try
-                    {
-                        m_logger.LogInformation($"Registering transformation '{payload.Value<string>("id")}' with endpoint '{payload.Value<string>("transformationEndpoint")}'");
-                        
-                        await client.PostAsync("/FileTransformation/RegisterTransformation",
-                            new StringContent(payload.ToString(Formatting.None),
-                                MediaTypeHeaderValue.Parse("application/json")));
-                    }
-                    catch (Exception ex)
-                    {
-                        m_logger.LogError(ex, $"Caught exception when attempting to register file transformation. Ensure you have `File Transformation` plugin installed on your server.");
-                        return;
-                    }
-                }
-            }
-        }
 
-        private void RegisterPipeEndpoint(string pipeName, Func<PatchRequestPayload, string> handler)
-        {
-            m_namedPipeService.CreateNamedPipeHandler(pipeName, async stream =>
+            Assembly? fileTransformationAssembly =
+                AssemblyLoadContext.All.SelectMany(x => x.Assemblies).FirstOrDefault(x =>
+                    x.FullName?.Contains(".FileTransformation") ?? false);
+
+            if (fileTransformationAssembly != null)
             {
-                byte[] lengthBuffer = new byte[8];
-                await stream.ReadExactlyAsync(lengthBuffer, 0, lengthBuffer.Length);
-                long length = BitConverter.ToInt64(lengthBuffer, 0);
-                        
-                MemoryStream memoryStream = new MemoryStream();
-                while (length > 0)
+                Type? pluginInterfaceType = fileTransformationAssembly.GetType("Jellyfin.Plugin.FileTransformation.PluginInterface");
+
+                if (pluginInterfaceType != null)
                 {
-                    byte[] buffer = new byte[Math.Min(length, 1024)];
-                    int readBytes = await stream.ReadAsync(buffer, 0, buffer.Length);
-                    length -= readBytes;
-                            
-                    memoryStream.Write(buffer, 0, readBytes);
+                    foreach (JObject payload in payloads)
+                    {
+                        pluginInterfaceType.GetMethod("RegisterTransformation")?.Invoke(null, new object?[] { payload });
+                    }
                 }
-                        
-                string rawJson = Encoding.UTF8.GetString(memoryStream.ToArray());
-                
-                string response = handler(JsonConvert.DeserializeObject<PatchRequestPayload>(rawJson)!);
-                byte[] responseBuffer = Encoding.UTF8.GetBytes(response);
-                byte[] responseLengthBuffer = BitConverter.GetBytes((long)responseBuffer.Length);
-                        
-                await stream.WriteAsync(responseLengthBuffer, 0, responseLengthBuffer.Length);
-                await stream.WriteAsync(responseBuffer, 0, responseBuffer.Length);
-            });
+            }
+
+            return Task.CompletedTask;
         }
 
         public IEnumerable<TaskTriggerInfo> GetDefaultTriggers()

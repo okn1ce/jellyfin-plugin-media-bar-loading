@@ -9,11 +9,6 @@ namespace Jellyfin.Plugin.MediaBar
     {
         public void RegisterServices(IServiceCollection serviceCollection, IServerApplicationHost applicationHost)
         {
-            serviceCollection.AddSingleton<NamedPipeService>();
-            serviceCollection.AddHostedService<NamedPipeService>(services =>
-            {
-                return services.GetRequiredService<NamedPipeService>();
-            });
         }
     }
 }

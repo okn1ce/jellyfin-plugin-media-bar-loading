@@ -6,12 +6,21 @@ using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
 using MediaBrowser.Controller.Playlists;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Jellyfin.Plugin.MediaBar.Helpers
 {
     public static class TransformationPatches
     {
-        public static string? AvatarsList(PatchRequestPayload payload, IPlaylistManager playlistManager, IUserManager userManager)
+        public static string AvatarsList(PatchRequestPayload payload)
+        {
+            IPlaylistManager playlistManager = MediaBarPlugin.Instance.ServiceProvider.GetRequiredService<IPlaylistManager>();
+            IUserManager userManager = MediaBarPlugin.Instance.ServiceProvider.GetRequiredService<IUserManager>();
+
+            return AvatarsList(payload, playlistManager, userManager) ?? "";
+        }
+        
+        private static string? AvatarsList(PatchRequestPayload payload, IPlaylistManager playlistManager, IUserManager userManager)
         {
             if (MediaBarPlugin.Instance.Configuration.UseAvatarsFile)
             {

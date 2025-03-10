@@ -14,9 +14,13 @@ namespace Jellyfin.Plugin.MediaBar
 
         public static MediaBarPlugin Instance { get; private set; } = null!;
         
+        public IServiceProvider ServiceProvider { get; }
+        
         public MediaBarPlugin(IApplicationPaths applicationPaths, IXmlSerializer xmlSerializer, IServiceProvider serviceProvider) : base(applicationPaths, xmlSerializer)
         {
             Instance = this;
+            
+            ServiceProvider = serviceProvider;
         }
         
         public IEnumerable<PluginPageInfo> GetPages()
