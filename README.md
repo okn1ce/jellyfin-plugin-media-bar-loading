@@ -1,8 +1,8 @@
 # Jellyfin-Media-Bar - Now with Play Now Function
 
 1. Add `https://www.iamparadox.dev/jellyfin/plugins/manifest.json` to your repositories
-2. Install "File Transformation" 2.0.0
-3. Install "Media Bar" 2.0.0
+2. Install "File Transformation" at least 2.2.1.0
+3. Install latest "Media Bar"
 4. Restart Jellyfin
 
 <details>
