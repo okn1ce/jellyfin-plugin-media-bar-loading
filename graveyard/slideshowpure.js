@@ -1,30 +1,17 @@
 const getJellyfinCredentials = () => {
   const jellyfinCreds = localStorage.getItem("jellyfin_credentials");
-  const deviceID = localStorage.getItem("_deviceId2");
-  if (!jellyfinCreds) {
-    console.error("No Jellyfin credentials found in localStorage");
-    return;
-  }
   try {
     const serverCredentials = JSON.parse(jellyfinCreds);
-    const firstServer = serverCredentials?.Servers?.[0];
-    if (!firstServer || !firstServer.AccessToken || !firstServer.UserId) {
-      console.error("Invalid Jellyfin credentials structure");
+    const firstServer = serverCredentials.Servers[0];
+    if (!firstServer) {
+      console.error("Could not find credentials for the client");
       return;
     }
-    return {
-      token: firstServer.AccessToken,
-      userId: firstServer.UserId,
-      deviceID
-    };
+    return { token: firstServer.AccessToken, userId: firstServer.UserId };
   } catch (e) {
-    console.error("Could not parse Jellyfin credentials", e);
+    console.error("Could not parse jellyfin credentials", e);
   }
 };
-const credentials = getJellyfinCredentials();
-if (credentials) {
-  console.log("Token:", credentials.token, "UserId:", credentials.userId, "DeviceID:", credentials.deviceID);
-}
 
 const initLoadingScreen = () => {
   const currentPath = window.location.href.toLowerCase();
@@ -45,15 +32,8 @@ const initLoadingScreen = () => {
           </div>
       </div>`;
     document.body.insertAdjacentHTML("beforeend", loadingHTML);
-
     const interval = setInterval(() => {
-      if (
-        document.querySelector(".manualLoginForm") ||
-        (
-          document.querySelector(".homeSectionsContainer") &&
-          document.querySelector(".slide.active")
-        )
-      ) {
+      if (document.querySelector(".manualLoginForm")) {
         $(".bar-loading").fadeOut(700, () => $(".bar-loading").remove());
         clearInterval(interval);
       }
@@ -61,33 +41,12 @@ const initLoadingScreen = () => {
   }
 };
 initLoadingScreen();
-
-const observer = new MutationObserver((mutations) => {
-  for (let mutation of mutations) {
-    if (window.location.hash.includes("#/home.html")) {
-      let container = document.getElementById("slides-container");
-
-      if (!container) {
-        container = document.createElement("div");
-        container.id = "slides-container";
-        document.body.appendChild(container);
-        slidesInit();
-      }
-      container.style.display = "block";
-    } else {
-      const container = document.getElementById("slides-container");
-      if (container) container.style.display = "none";
-    }
-  }
-});
-observer.observe(document.body, { childList: true, subtree: true });
-
-
-const slidesInit = () => {
+const slidesInit = async () => {
   if (window.hasInitializedSlideshow) {
     console.log("Slideshow already initialized. Skipping re-init.");
     return;
   }
+
   window.hasInitializedSlideshow = !0;
   const shuffleInterval = 8000;
   let isTransitioning = !1;
@@ -138,9 +97,15 @@ const slidesInit = () => {
     logo.src = `${window.location.origin}/Items/${itemId}/Images/Logo`;
     logo.alt = "Logo";
     logo.loading = "eager";
+    const logoImgBlur = document.createElement("img");
+    logoImgBlur.src = `${window.location.origin}/Items/${itemId}/Images/Logo`;
+    logoImgBlur.alt = item.Name || "Title";
+    logoImgBlur.loading = "eager";
+    logoImgBlur.className = "featured-logo-blur";
     const logoContainer = document.createElement("div");
     logoContainer.className = "logo-container";
     logoContainer.appendChild(logo);
+    logoContainer.appendChild(logoImgBlur);
     const featuredContent = document.createElement("div");
     featuredContent.className = "featured-content";
     featuredContent.textContent = title;
@@ -262,58 +227,40 @@ const slidesInit = () => {
   <span class="play-text">Play</span>
 `;
     playButton.onclick = async () => {
+      if (!window.PlaybackManager) {
+        console.error("PlaybackManager is not available.");
+        return;
+      }
+      if (!window.ApiClient) {
+        console.error("Jellyfin API client is not available.");
+        return;
+      }
       const apiClient = window.ApiClient;
       const userId = apiClient.getCurrentUserId();
-      const mediabrowser = apiClient.appName();
-      const appVersion = apiClient.appVersion();
-      const deviceName = apiClient.deviceName();
-      const deviceId = apiClient.deviceId();
-      const accessToken = apiClient.accessToken();
-      const baseUrl = apiClient.serverAddress();
-      if (!userId || !mediabrowser || !deviceName || !deviceId || !appVersion || !accessToken || !baseUrl) {
-        console.error("Details not found.");
+      if (!userId) {
+        console.error("User not found.");
         return;
       }
-      let sessionId = null;
       try {
-        const response = await fetch(`${baseUrl}/Sessions?deviceId=${encodeURIComponent(deviceId)}`, {
-          headers: {
-            'X-Emby-Authorization': `MediaBrowser Client="${mediabrowser}", Device="${deviceName}", DeviceId="${deviceId}", Version="${appVersion}", Token="${accessToken}"`
-          }
-        });
-        if (!response.ok) {
-          throw new Error(`Failed to fetch session data: ${response.statusText}`);
-        }
-        const sessions = await response.json();
-        if (sessions.length === 0) {
-          console.warn("No sessions found for deviceId:", deviceId);
+        const item = await apiClient.getItem(userId, itemId);
+        if (!item) {
+          console.error("Media item not found.");
           return;
         }
-        const session = sessions[0];
-        sessionId = session.Id;
-        console.log("Found sessionId:", sessionId);
+        window.PlaybackManager.play({
+          items: [item],
+          startPositionTicks: 0,
+          isMuted: !1,
+          isPaused: !1,
+        })
+          .then(() => {
+            console.log("Playback started successfully.");
+          })
+          .catch((error) => {
+            console.error("Failed to start playback:", error);
+          });
       } catch (error) {
-        console.error("Error fetching session data:", error);
-        return;
-      }
-      if (!sessionId) {
-        console.error("Session ID not found.");
-        return;
-      }
-      const playUrl = `${baseUrl}/Sessions/${sessionId}/Playing?playCommand=PlayNow&itemIds=${itemId}`;
-      try {
-        const playResponse = await fetch(playUrl, {
-          method: 'POST',
-          headers: {
-            'X-Emby-Authorization': `MediaBrowser Client="${mediabrowser}", Device="${deviceName}", DeviceId="${deviceId}", Version="${appVersion}", Token="${accessToken}"`
-          }
-        });
-        if (!playResponse.ok) {
-          throw new Error(`Failed to send play command: ${playResponse.statusText}`);
-        }
-        console.log("Play command sent successfully to session:", sessionId);
-      } catch (error) {
-        console.error("Error sending play command:", error);
+        console.error("Error starting playback:", error);
       }
     };
     const detailButton = document.createElement("button");
@@ -323,8 +270,8 @@ const slidesInit = () => {
   <span class="detail-text">Info</span>
 `;
     detailButton.onclick = () => {
-      Emby.Page.show(`/details?id=${itemId}`);
-    }
+      window.top.location.href = `/#!/details?id=${itemId}`;
+    };
     buttonContainer.appendChild(detailButton);
     buttonContainer.appendChild(playButton);
     slide.append(
@@ -342,10 +289,20 @@ const slidesInit = () => {
   const createSlideForItem = async (item, title) => {
     const container = document.getElementById("slides-container");
     const itemId = item.Id;
-    const slideElement = createSlideElement(item, title);
-    container.appendChild(slideElement);
-    if (container.children.length === 1) {
-      showSlide(0);
+    const backdropUrl = `${window.location.origin}/Items/${itemId}/Images/Backdrop/0`;
+    const logoUrl = `${window.location.origin}/Items/${itemId}/Images/Logo`;
+    const [backdropExists, logoExists] = await Promise.all([
+      fetch(backdropUrl, { method: "HEAD" }).then((res) => res.ok),
+      fetch(logoUrl, { method: "HEAD" }).then((res) => res.ok),
+    ]);
+    if (backdropExists && logoExists) {
+      const slideElement = createSlideElement(item, title);
+      container.appendChild(slideElement);
+      if (container.children.length === 1) {
+        showSlide(0);
+      }
+    } else {
+      console.warn(`Skipping item ${itemId}: Missing backdrop or logo.`);
     }
   };
   const fetchItemDetails = async (itemId) => {
@@ -377,7 +334,7 @@ const slidesInit = () => {
   const fetchItemsFromServer = async () => {
     try {
       const response = await fetch(
-        `${window.location.origin}/Items?IncludeItemTypes=Movie,Series&Recursive=true&hasOverview=true&imageTypes=Logo,Backdrop&SortBy=random&isPlayed=False&Limit=100`,
+        `${window.location.origin}/Items?IncludeItemTypes=Movie,Series&Recursive=true&hasOverview=true&imageTypes=Logo,Backdrop&SortBy=random&isPlayed=False&Limit=500`,
         {
           headers: {
             Authorization: `MediaBrowser Client="Jellyfin Web", Device="YourDeviceName", DeviceId="YourDeviceId", Version="YourClientVersion", Token="${token}"`,
@@ -480,9 +437,10 @@ const slidesInit = () => {
       showSlide(currentSlideIndex);
       container.style.display = "block";
       slideInterval =
-        new SlideTimer(function () {
-          updateCurrentSlide(currentSlideIndex + 1);
-        }, shuffleInterval);
+      new SlideTimer(function() {
+        updateCurrentSlide(currentSlideIndex + 1);
+      }, shuffleInterval);
+      
     }
     slides.forEach((slide) => {
       slide.addEventListener(
@@ -594,6 +552,7 @@ const slidesInit = () => {
     items = shuffleArray(items);
     await createSlidesForItems(items);
     initializeSlideshow();
+    $(".bar-loading").fadeOut(700, () => $(".bar-loading").remove());
   };
   initializeSlides();
 };
