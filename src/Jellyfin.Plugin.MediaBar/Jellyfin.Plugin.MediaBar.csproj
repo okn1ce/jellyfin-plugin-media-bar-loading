@@ -21,10 +21,6 @@
       <EmbeddedResource Include="Configuration\config.html" />
       <None Remove="Inject\index.html" />
       <EmbeddedResource Include="Inject\index.html" />
-      <None Remove="Inject\slideshowpure.css" />
-      <EmbeddedResource Include="Inject\slideshowpure.css" />
-      <None Remove="Inject\slideshowpure.js" />
-      <EmbeddedResource Include="Inject\slideshowpure.js" />
     </ItemGroup>
 
     <ItemGroup>

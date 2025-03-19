@@ -88,7 +88,11 @@ namespace Jellyfin.Plugin.MediaBar.Helpers
             Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"{typeof(MediaBarPlugin).Namespace}.Inject.index.html")!;
             using TextReader reader = new StreamReader(stream);
 
-            string regex = Regex.Replace(payload.Contents!, "(</body>)", $"{reader.ReadToEnd()}$1");
+            string importedHtml = reader
+                .ReadToEnd()
+                .Replace("{{Config.VersionString}}", MediaBarPlugin.Instance.Configuration.VersionString);
+            
+            string regex = Regex.Replace(payload.Contents!, "(</head>)", $"{importedHtml}$1");
             
             return regex;
         }

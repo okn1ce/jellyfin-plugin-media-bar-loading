@@ -28,6 +28,12 @@
                     </select>
                     <span>Whether the media bar should appear or not.</span>
                 </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="txtVersionString">Version</label>
+                    <label class="inputLabel inputLabel-float inputLabelUnfocused" for="txtVersionString"></label>
+                    <input id="txtVersionString" type="text" is="emby-input" class="emby-input" data-id="txtVersionString" />
+                    <div class="fieldDescription">Which version of the jsdelivr'd plugin should be used.</div>
+                </div>
                 <div class="checkboxContainer checkboxContainer-withDescription">
                     <label class="emby-checkbox-label">
                         <input type="checkbox" id="chkUseAvatarsFile" is="emby-checkbox" class="emby-checkbox" data-id="chkUseAvatarsFile" />
@@ -65,6 +71,7 @@
                         Enabled: document.querySelector("[data-id=enabledSelect]").value,
                         UseAvatarsFile: document.querySelector("[data-id=chkUseAvatarsFile]").checked,
                         AvatarsPlaylist: document.querySelector("[data-id=txtAvatarsPlaylist]").value,
+                        VersionString: document.querySelector("[data-id=txtVersionString]").value,
                     };
 
                     window.ApiClient.updatePluginConfiguration(MediaBarConfig.pluginId, config)
@@ -83,6 +90,7 @@
                             document.querySelector("[data-id=enabledSelect]").value = config.Enabled;
                             document.querySelector("[data-id=chkUseAvatarsFile]").checked = config.UseAvatarsFile;
                             document.querySelector("[data-id=txtAvatarsPlaylist]").value = config.AvatarsPlaylist;
+                            document.querySelector("[data-id=txtVersionString]").value = config.VersionString;
                         })
                         .catch(function (error) {
                             console.error(error);

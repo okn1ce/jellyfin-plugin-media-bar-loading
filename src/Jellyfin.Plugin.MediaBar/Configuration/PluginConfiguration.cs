@@ -12,6 +12,8 @@ namespace Jellyfin.Plugin.MediaBar.Configuration
     {
         public MediaBarState Enabled { get; set; } = MediaBarState.Enabled;
 
+        public string VersionString { get; set; } = "latest";
+        
         public bool UseAvatarsFile { get; set; } = true;
 
         public string AvatarsPlaylist { get; set; } = string.Empty;
