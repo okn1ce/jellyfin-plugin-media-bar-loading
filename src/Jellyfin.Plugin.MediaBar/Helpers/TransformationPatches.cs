@@ -1,6 +1,7 @@
 ﻿using System.Reflection;
 using System.Text.RegularExpressions;
 using Jellyfin.Extensions;
+using Jellyfin.Plugin.MediaBar.Configuration;
 using Jellyfin.Plugin.MediaBar.Model;
 using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.TV;
@@ -85,6 +86,11 @@ namespace Jellyfin.Plugin.MediaBar.Helpers
         
         public static string IndexHtml(PatchRequestPayload payload)
         {
+            if (MediaBarPlugin.Instance.Configuration.Enabled == MediaBarState.Disabled)
+            {
+                return payload.Contents ?? string.Empty;
+            }
+            
             Stream stream = Assembly.GetExecutingAssembly().GetManifestResourceStream($"{typeof(MediaBarPlugin).Namespace}.Inject.index.html")!;
             using TextReader reader = new StreamReader(stream);
 
