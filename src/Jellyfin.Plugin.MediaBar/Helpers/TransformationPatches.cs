@@ -78,9 +78,10 @@ namespace Jellyfin.Plugin.MediaBar.Helpers
 
             foreach (Guid id in idsWritten)
             {
-                stringWriter.WriteLine(id);
+                // For some reason the JF api doesn't treat GUIDs correctly
+                stringWriter.WriteLine(id.ToString().Replace("-", ""));
             }
-                
+            
             return stringWriter.ToString();
         }
         
