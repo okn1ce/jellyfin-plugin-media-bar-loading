@@ -3,4 +3,4 @@
 [assembly: AssemblyProduct("Jellyfin.Plugins.MediaBar")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyTitle("Jellyfin.Plugins.MediaBar")]
-[assembly: AssemblyVersion("2.0.0.0")]
+[assembly: AssemblyVersion("2.3.0.0")]
