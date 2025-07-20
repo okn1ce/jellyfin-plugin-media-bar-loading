@@ -5,6 +5,11 @@
 3. Install latest "Media Bar"
 4. Restart Jellyfin
 
+## Reporting Issues
+If you issues relating to the visuals or behaviour of buttons added by the Media Bar please report them on MakD's repo (the one this is forked from). This plugin pulls the content from their repo directly and is only in control of adding it without the need for modifying your JF install files. 
+
+Any issues with plugin's settings (including using a playlist as your avatar's playlist) should be made here.
+
 <details>
   <summary>Original README.md from MakD</summary>
 
